@@ -37,10 +37,12 @@ def get_args():
 
     return args
 
+locked_hand_index = None
 
 def main():
     # Argument parsing #################################################################
     args = get_args()
+
 
     cap_device = args.device
     cap_width = args.width
@@ -122,9 +124,17 @@ def main():
         image.flags.writeable = True
 
         #  ####################################################################
+        i=0
         if results.multi_hand_landmarks is not None:
             for hand_landmarks, handedness in zip(results.multi_hand_landmarks,
                                                   results.multi_handedness):
+                #adding a lock
+                global locked_hand_index
+                current_label = handedness.classification[0].label
+                if locked_hand_index is None:
+                    locked_hand_index = current_label #locking onto one hand
+                if current_label != locked_hand_index:
+                    continue #ignoring the other hands
                 # Bounding box calculation
                 brect = calc_bounding_rect(debug_image, hand_landmarks)
                 # Landmark calculation
@@ -170,7 +180,7 @@ def main():
                 )
         else:
             point_history.append([0, 0])
-
+            locked_hand_index = None
         debug_image = draw_point_history(debug_image, point_history)
 
 
@@ -294,12 +304,9 @@ def logging_csv(number, mode, landmark_list, point_history_list):
     return
 
 
-
-
-
-
 required_sequence = ["Close", "Open", "peace"]
 sequence_index = 0
+
 count=0
 def draw_info_text(image, brect, handedness, hand_sign_text,
                    finger_gesture_text):
