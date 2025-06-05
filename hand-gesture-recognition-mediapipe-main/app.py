@@ -15,6 +15,7 @@ from utils import CvFpsCalc
 from model import KeyPointClassifier
 from model import PointHistoryClassifier
 
+
 from twilio.rest import Client
 
 def send_sms(to_number, message_body, account_sid, auth_token, messaging_service_sid=None, from_number=None):
@@ -54,7 +55,6 @@ def send_sms(to_number, message_body, account_sid, auth_token, messaging_service
 
     except Exception as e:
         return f"Failed to send SMS: {e}"
-
 def get_args():
     parser = argparse.ArgumentParser()
 
@@ -76,10 +76,12 @@ def get_args():
 
     return args
 
+locked_hand_index = None
 
 def main():
     # Argument parsing #################################################################
     args = get_args()
+
 
     cap_device = args.device
     cap_width = args.width
@@ -161,9 +163,17 @@ def main():
         image.flags.writeable = True
 
         #  ####################################################################
+        i=0
         if results.multi_hand_landmarks is not None:
             for hand_landmarks, handedness in zip(results.multi_hand_landmarks,
                                                   results.multi_handedness):
+                #adding a lock
+                global locked_hand_index
+                current_label = handedness.classification[0].label
+                if locked_hand_index is None:
+                    locked_hand_index = current_label #locking onto one hand
+                if current_label != locked_hand_index:
+                    continue #ignoring the other hands
                 # Bounding box calculation
                 brect = calc_bounding_rect(debug_image, hand_landmarks)
                 # Landmark calculation
@@ -209,7 +219,7 @@ def main():
                 )
         else:
             point_history.append([0, 0])
-
+            locked_hand_index = None
         debug_image = draw_point_history(debug_image, point_history)
 
 
@@ -333,12 +343,9 @@ def logging_csv(number, mode, landmark_list, point_history_list):
     return
 
 
-
-
-
-
 required_sequence = ["Close", "Open", "peace"]
 sequence_index = 0
+
 count=0
 def draw_info_text(image, brect, handedness, hand_sign_text,
                    finger_gesture_text):
@@ -363,15 +370,14 @@ def draw_info_text(image, brect, handedness, hand_sign_text,
             cv.putText(image, "Alert: Sequence detected!", (brect[0] + 5, brect[1] - 4),
                        cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv.LINE_AA)
             print("Alert: Sequence detected!")  # Trigger alert
-            sid = send_sms(
-                to_number='+919......',
-                message_body='Distress signal',
-                account_sid='ACccffa135c......',
-                auth_token='ea7bd3dac8a.........',
-                messaging_service_sid='MG15501...........aa6df'
-            )
-            print("Message SID:", sid)
-
+            # sid = send_sms(
+            #     to_number='+919541',
+            #     message_body='Distress signal',
+            #     account_sid='ACcc5..',
+            #     auth_token='ea7b005e',
+            #     messaging_service_sid='Mdf'
+            # )
+            # print("Message SID:", sid)
             sequence_index = 0
         else:
 
