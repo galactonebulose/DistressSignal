@@ -16,6 +16,45 @@ from model import KeyPointClassifier
 from model import PointHistoryClassifier
 
 
+from twilio.rest import Client
+
+def send_sms(to_number, message_body, account_sid, auth_token, messaging_service_sid=None, from_number=None):
+    """
+    Sends an SMS using Twilio API.
+
+    Parameters:
+        to_number (str): Recipient phone number (e.g., '+919596713921')
+        message_body (str): The text message to send
+        account_sid (str): Your Twilio Account SID
+        auth_token (str): Your Twilio Auth Token
+        messaging_service_sid (str, optional): Messaging Service SID (starts with 'MG...')
+        from_number (str, optional): Your Twilio phone number (e.g., '+1234567890')
+
+    Returns:
+        str: Message SID if sent successfully
+    """
+    client = Client(account_sid, auth_token)
+
+    try:
+        if messaging_service_sid:
+            message = client.messages.create(
+                messaging_service_sid=messaging_service_sid,
+                body=message_body,
+                to=to_number
+            )
+        elif from_number:
+            message = client.messages.create(
+                from_=from_number,
+                body=message_body,
+                to=to_number
+            )
+        else:
+            raise ValueError("Either messaging_service_sid or from_number must be provided.")
+
+        return message.sid
+
+    except Exception as e:
+        return f"Failed to send SMS: {e}"
 def get_args():
     parser = argparse.ArgumentParser()
 
@@ -331,6 +370,14 @@ def draw_info_text(image, brect, handedness, hand_sign_text,
             cv.putText(image, "Alert: Sequence detected!", (brect[0] + 5, brect[1] - 4),
                        cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv.LINE_AA)
             print("Alert: Sequence detected!")  # Trigger alert
+            # sid = send_sms(
+            #     to_number='+919541',
+            #     message_body='Distress signal',
+            #     account_sid='ACcc5..',
+            #     auth_token='ea7b005e',
+            #     messaging_service_sid='Mdf'
+            # )
+            # print("Message SID:", sid)
             sequence_index = 0
         else:
 
