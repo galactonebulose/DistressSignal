@@ -381,7 +381,7 @@ def draw_info_text(image, brect, handedness, hand_sign_text, finger_gesture_text
             print("✅ Alert: Sequence detected!")
 
             # sid = send_sms(
-            #     to_number='+919596713921',
+            #     to_number='+911',
             #     message_body='Distress signal',
             #     account_sid='AC885',
             #     auth_token='ea7005e',
