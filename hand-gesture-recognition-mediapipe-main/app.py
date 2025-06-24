@@ -342,52 +342,58 @@ def logging_csv(number, mode, landmark_list, point_history_list):
             writer.writerow([number, *point_history_list])
     return
 
-
 required_sequence = ["Close", "Open", "peace"]
 sequence_index = 0
+hold_counter = 0
+HOLD_THRESHOLD = 10  # Number of frames to hold the correct gesture before accepting
 
-count=0
-def draw_info_text(image, brect, handedness, hand_sign_text,
-                   finger_gesture_text):
-    cv.rectangle(image, (brect[0], brect[1]), (brect[2], brect[1] - 22),
-                 (0, 0, 0), -1)
-    global sequence_index,count
+def draw_info_text(image, brect, handedness, hand_sign_text, finger_gesture_text):
+    global sequence_index, hold_counter
+
+    cv.rectangle(image, (brect[0], brect[1]), (brect[2], brect[1] - 22), (0, 0, 0), -1)
+    cv.putText(image, f"Gesture: {hand_sign_text}",
+               (brect[0] + 5, brect[1] - 40),
+               cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv.LINE_AA)
     info_text = handedness.classification[0].label[0:]
-    if hand_sign_text != "":
-        if hand_sign_text == required_sequence[sequence_index]:
-            sequence_index += 1  # Move to next step
-            print(sequence_index)
-        else:
-            if sequence_index>0 and hand_sign_text == required_sequence[sequence_index-1] and count<20:
-                print("hold")
-                count+=1
-            else:
-                count=0
-                sequence_index = 0  # Reset if the sequence is broken
 
-            # If full sequence is detected
+    if hand_sign_text != "":
+        expected_sign = required_sequence[sequence_index]
+
+        if hand_sign_text == expected_sign:
+            hold_counter += 1
+            if hold_counter >= HOLD_THRESHOLD:
+                sequence_index += 1
+                hold_counter = 0
+                print(f"Step {sequence_index} detected: {expected_sign}")
+        elif sequence_index > 0 and hand_sign_text == required_sequence[sequence_index - 1]:
+            # Still holding previous correct gesture, do nothing, wait.
+            print("Holding previous gesture...")
+        else:
+            # Reset if incorrect gesture
+            sequence_index = 0
+            hold_counter = 0
+            print("Wrong gesture, resetting sequence.")
+
+        # Final step: full sequence detected
         if sequence_index == len(required_sequence):
             cv.putText(image, "Alert: Sequence detected!", (brect[0] + 5, brect[1] - 4),
                        cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv.LINE_AA)
-            print("Alert: Sequence detected!")  # Trigger alert
+            print("✅ Alert: Sequence detected!")
+
             # sid = send_sms(
-            #     to_number='+919541',
+            #     to_number='+919596713921',
             #     message_body='Distress signal',
-            #     account_sid='ACcc5..',
-            #     auth_token='ea7b005e',
-            #     messaging_service_sid='Mdf'
+            #     account_sid='AC885',
+            #     auth_token='ea7005e',
+            #     messaging_service_sid='MG1aa6df'
             # )
-            # print("Message SID:", sid)
+
+            print("Message SID:", sid)
+
+            # Reset after detection
             sequence_index = 0
-        else:
-
-            info_text = info_text + ':' + hand_sign_text
-            cv.putText(image, info_text, (brect[0] + 5, brect[1] - 4),
-               cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv.LINE_AA)
-
-
+            hold_counter = 0
     return image
-
 
 def draw_point_history(image, point_history):
     for index, point in enumerate(point_history):
